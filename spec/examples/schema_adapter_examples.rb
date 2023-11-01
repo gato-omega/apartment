@@ -214,6 +214,10 @@ shared_examples_for 'a schema based apartment adapter' do
         expect do
           subject.switch! 'unknown_schema'
         end.not_to raise_error(Apartment::TenantNotFound)
+
+        expect do
+          subject.switch! 'unknown_schema'
+        end.not_to raise_error
       end
     end
 

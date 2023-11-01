@@ -27,14 +27,35 @@ module Apartment
             example.run
 
             # after
-            Rails.configuration.database_configuration = {}
-            ActiveRecord::Base.clear_all_connections!
+            if Rails.configuration.respond_to?(:database_configuration=)
+              Rails.configuration.database_configuration = {} # Cannot assign, no writer!???
+            else
+              # Check https://github.com/rails/rails/blob/v7.0.8/activerecord/lib/active_record/railtie.rb
+              # Check https://github.com/rails/rails/blob/v7.1.1/activerecord/lib/active_record/railtie.rb
+              # ActiveRecord.configurations = {}
+            end
+
+            if Apartment::Spec::Setup.activerecord_below_7_1?
+              ActiveRecord::Base.clear_all_connections!
+            else
+              ActiveRecord::Base.connection_handler.clear_all_connections!
+            end
 
             Apartment.excluded_models.each do |model|
               klass = model.constantize
 
-              Apartment.connection_class.remove_connection(klass)
-              klass.clear_all_connections!
+              if Apartment::Spec::Setup.activerecord_below_7_1?
+                Apartment.connection_class.remove_connection(klass)
+              else
+                klass.remove_connection
+              end
+
+              if Apartment::Spec::Setup.activerecord_below_7_1?
+                klass.clear_all_connections!
+              else
+                klass.connection_handler.clear_all_connections!
+              end
+
               klass.reset_table_name
             end
             Apartment.reset
@@ -43,6 +64,18 @@ module Apartment
         end
       end
       # rubocop:enable Metrics/AbcSize
+
+      def self.activerecord_below_5_2?
+        ActiveRecord.version.release < Gem::Version.new('5.2.0')
+      end
+
+      def self.activerecord_below_6_0?
+        ActiveRecord.version.release < Gem::Version.new('6.0.0')
+      end
+
+      def self.activerecord_below_7_1?
+        ActiveRecord.version.release < Gem::Version.new('7.1.0')
+      end
     end
   end
 end

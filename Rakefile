@@ -37,7 +37,8 @@ task default: :spec
 
 namespace :db do
   namespace :test do
-    task prepare: %w[postgres:drop_db postgres:build_db mysql:drop_db mysql:build_db]
+    # task prepare: %w[postgres:drop_db postgres:build_db mysql:drop_db mysql:build_db]
+    task prepare: %w[postgres:drop_db postgres:build_db]
   end
 
   desc "copy sample database credential files over if real files don't exist"
@@ -140,14 +141,20 @@ def activerecord_below_6_0?
   ActiveRecord.version.release < Gem::Version.new('6.0.0')
 end
 
+def activerecord_below_7_1?
+  ActiveRecord.version.release < Gem::Version.new('7.1.0')
+end
+
 def migrate
   if activerecord_below_5_2?
     ActiveRecord::Migrator.migrate('spec/dummy/db/migrate')
   elsif activerecord_below_6_0?
     ActiveRecord::MigrationContext.new('spec/dummy/db/migrate').migrate
-  else
+  elsif activerecord_below_7_1?
     # TODO: Figure out if there is any other possibility that can/should be
     # passed here as the second argument for the migration context
-    ActiveRecord::MigrationContext.new('spec/dummy/db/migrate', ActiveRecord::SchemaMigration).migrate
+    ActiveRecord::MigrationContext.new('spec/dummy/db/migrate', ActiveRecord::Base.connection.schema_migration).migrate
+  else
+
   end
 end
